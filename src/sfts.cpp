@@ -51,9 +51,7 @@ void sfts_free(sfts * index)
 
 int sfts_open(sfts * index)
 {
-    kvdbo_open(index->sfts_db);
-    
-    return 0;
+    return kvdbo_open(index->sfts_db);
 }
 
 void sfts_close(sfts * index)
