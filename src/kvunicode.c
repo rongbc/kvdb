@@ -108,7 +108,7 @@ static UReplaceableCallbacks s_xrepVtable;
 static UTransliterator * s_trans = NULL;
 static pthread_mutex_t s_lock = PTHREAD_MUTEX_INITIALIZER;
 static int s_initialized = 0;
-static int pthread_once_t s_once = PTHREAD_ONCE_INIT;
+static pthread_once_t s_once = PTHREAD_ONCE_INIT;
 
 static void kv_unicode_init(void)
 {
