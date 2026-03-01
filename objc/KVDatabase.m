@@ -102,7 +102,9 @@ static void enumeration_callback(kvdb * db, struct kvdb_enumerate_cb_params * pa
 {
     KVDatabase * database = (__bridge id) data;
     NSString * key = [[NSString alloc] initWithBytes:params->key length:params->key_size encoding:NSUTF8StringEncoding];
-    database.enumerationBlock(key, (BOOL *) stop);
+    BOOL shouldStop = (* stop) ? YES : NO;
+    database.enumerationBlock(key, &shouldStop);
+    * stop = shouldStop ? 1 : 0;
 }
 
 @end
