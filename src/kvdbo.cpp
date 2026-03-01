@@ -501,7 +501,10 @@ struct modified_node {
 static int flush_pending_keys(kvdbo * db)
 {
     if ((db->pending_keys.size() > 0) && (db->nodes_ids.size() == 0)) {
-        add_first_node(db);
+        int r = add_first_node(db);
+        if (r != 0) {
+            return r;
+        }
     }
     
     struct modified_node current_node;
@@ -517,14 +520,20 @@ static int flush_pending_keys(kvdbo * db)
             // also applies when nodes_ids->size() == 1, node_index == 0
             while (deletion_it != db->pending_keys_delete.end()) {
                 if (current_node.node_index != node_index) {
-                    load_node(&current_node, node_index);
+                    int r = load_node(&current_node, node_index);
+                    if (r != 0) {
+                        return r;
+                    }
                 }
                 current_node.keys.erase(* deletion_it);
                 deletion_it ++;
             }
             while (addition_it != db->pending_keys.end()) {
                 if (current_node.node_index != node_index) {
-                    load_node(&current_node, node_index);
+                    int r = load_node(&current_node, node_index);
+                    if (r != 0) {
+                        return r;
+                    }
                 }
                 current_node.keys.insert(* addition_it);
                 addition_it ++;
@@ -539,7 +548,10 @@ static int flush_pending_keys(kvdbo * db)
                     break;
                 }
                 if (current_node.node_index != node_index) {
-                    load_node(&current_node, node_index);
+                    int r = load_node(&current_node, node_index);
+                    if (r != 0) {
+                        return r;
+                    }
                 }
                 current_node.keys.erase(* deletion_it);
                 deletion_it ++;
@@ -551,7 +563,10 @@ static int flush_pending_keys(kvdbo * db)
                     break;
                 }
                 if (current_node.node_index != node_index) {
-                    load_node(&current_node, node_index);
+                    int r = load_node(&current_node, node_index);
+                    if (r != 0) {
+                        return r;
+                    }
                 }
                 current_node.keys.insert(* addition_it);
                 addition_it ++;
@@ -559,7 +574,10 @@ static int flush_pending_keys(kvdbo * db)
         }
     }
     // write the last node.
-    write_loaded_node(&current_node);
+    int r = write_loaded_node(&current_node);
+    if (r != 0) {
+        return r;
+    }
     db->pending_keys.clear();
     db->pending_keys_delete.clear();
     
@@ -569,14 +587,17 @@ static int flush_pending_keys(kvdbo * db)
 // load the given node in memory.
 static int load_node(struct modified_node * node, unsigned int node_index)
 {
-    write_loaded_node(node);
+    int r = write_loaded_node(node);
+    if (r != 0) {
+        return r;
+    }
     
     uint64_t node_id = node->db->nodes_ids[node_index];
     node->node_index = node_index;
     node->node_id = node_id;
     node->keys.clear();
     
-    int r = load_from_node_id(node, node_id);
+    r = load_from_node_id(node, node_id);
     if (r != 0) {
         return r;
     }
