@@ -102,10 +102,10 @@ int kvdbo_open(kvdbo * db)
 
 void kvdbo_close(kvdbo * db)
 {
+    flush_pending_keys(db);
     db->nodes_keys_count.clear();
     db->nodes_first_keys.clear();
     db->nodes_ids.clear();
-    flush_pending_keys(db);
     kvdb_close(db->db);
 }
 
