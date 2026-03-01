@@ -374,6 +374,10 @@ static int read_master_node(kvdbo * db)
     //size_t remaining = size - (p - value);
     size_t remaining = size - position;
     unserialize_words_list(db->nodes_first_keys, value + position, remaining);
+    if (max_node_id == (uint64_t) -1) {
+        return -2;
+    }
+    db->next_node_id = max_node_id + 1;
     return 0;
 }
 
