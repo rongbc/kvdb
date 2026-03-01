@@ -126,6 +126,7 @@ int sfts_u_set2(sfts * index, uint64_t doc, const UChar ** utext, int count)
         int r = add_to_indexer(index, doc, transliterated, wordsids_set);
         if (r < 0) {
             result = r;
+            free(transliterated);
             break;
         }
         free(transliterated);
@@ -173,6 +174,7 @@ static int tokenize(sfts * index, uint64_t doc, const UChar * text)
         int r = add_to_indexer(index, doc, transliterated, wordsids_set);
         if (r < 0) {
             result = r;
+            free(transliterated);
             break;
         }
         
@@ -211,6 +213,7 @@ static int tokenize(sfts * index, uint64_t doc, const UChar * text)
         int r = add_to_indexer(index, doc, transliterated, wordsids_set);
         if (r < 0) {
             result = r;
+            free(transliterated);
             break;
         }
         
