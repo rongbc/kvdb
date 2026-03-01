@@ -38,7 +38,12 @@ int kv_table_header_write(kvdb * db, uint64_t table_start, uint64_t maxcount)
 
 int kv_tables_setup(kvdb * db)
 {
-    map_table(db, &db->kv_first_table, KV_HEADER_SIZE, 1);
+    db->kv_first_table = NULL;
+    int r = map_table(db, &db->kv_first_table, KV_HEADER_SIZE, 1);
+    if (r < 0) {
+        db->kv_first_table = NULL;
+        return -1;
+    }
     return 0;
 }
 
