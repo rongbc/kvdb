@@ -99,8 +99,10 @@ enum {
 {
     uint64_t * docids = NULL;
     size_t count = 0;
-    UChar * buffer = malloc(sizeof(* buffer) * ([token length] + 1));
-    [token getCharacters:buffer range:NSMakeRange(0, [token length])];
+    NSUInteger tokenLength = [token length];
+    UChar * buffer = malloc(sizeof(* buffer) * (tokenLength + 1));
+    [token getCharacters:buffer range:NSMakeRange(0, tokenLength)];
+    buffer[tokenLength] = 0;
     int r = sfts_u_search(_db, buffer, (sfts_search_kind) kind, &docids, &count);
     free(buffer);
     if (r == KVDBIOErrorCode) {
