@@ -116,7 +116,7 @@ static void kv_unicode_init(void)
     if (!s_initialized) {
         UChar urules[1024];
         UErrorCode status = U_ZERO_ERROR;
-        u_strFromUTF8(urules, sizeof(urules), NULL, "Any-Latin; NFD; Lower; [:nonspacing mark:] remove; nfc", -1, &status);
+        u_strFromUTF8(urules, (int32_t) (sizeof(urules) / sizeof(urules[0])), NULL, "Any-Latin; NFD; Lower; [:nonspacing mark:] remove; nfc", -1, &status);
         LIDX_ASSERT(status == U_ZERO_ERROR);
         
         UParseError parseError;
