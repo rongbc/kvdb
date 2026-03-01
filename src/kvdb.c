@@ -25,6 +25,7 @@
 #include "kvmurmurhash.h"
 #include "kvtable.h"
 #include "kvblock.h"
+#include "kvio.h"
 
 #define MARKER "KVDB"
 #define VERSION 5
@@ -120,8 +121,8 @@ int kvdb_open(kvdb * db)
         h32_to_bytes(&data[4], VERSION);
         h64_to_bytes(&data[4 + 4], firstmaxcount);
         data[4 + 4 + 8] = db->kv_compression_type;
-        ssize_t write_count = write(db->kv_fd, data, sizeof(data));
-        if (write_count != sizeof(data)) {
+        r = kv_full_write(db->kv_fd, data, sizeof(data));
+        if (r < 0) {
             close(db->kv_fd);
             db->kv_fd = -1;
             fprintf(stderr, "write failed\n");
@@ -140,8 +141,8 @@ int kvdb_open(kvdb * db)
     char marker[4];
     uint32_t version;
     int compression_type;
-    ssize_t read_count = pread(db->kv_fd, data, sizeof(data), 0);
-    if (read_count != sizeof(data)) {
+    r = kv_full_pread(db->kv_fd, data, sizeof(data), 0);
+    if (r < 0) {
         close(db->kv_fd);
         db->kv_fd = -1;
         fprintf(stderr, "read header failed\n");
@@ -291,12 +292,12 @@ static void show_bucket(kvdb * db, uint32_t idx)
         uint8_t log2_size;
         uint64_t current_key_size;
         char * current_key;
-        ssize_t r;
+        int r;
         
         current_offset = next_offset;
         char block_header_data[KV_BLOCK_KEY_BYTES_OFFSET + PRE_READ_KEY_SIZE];
         
-        r = pread(db->kv_fd, block_header_data, sizeof(block_header_data), (off_t) next_offset);
+        r = kv_full_pread(db->kv_fd, block_header_data, sizeof(block_header_data), (off_t) next_offset);
         if (r < 0)
             return;
         char * p = block_header_data;
@@ -322,7 +323,7 @@ static void show_bucket(kvdb * db, uint32_t idx)
                 allocated = malloc((size_t) current_key_size);
                 current_key = allocated;
             }
-            r = pread(db->kv_fd, current_key, (size_t) current_key_size, (off_t) (current_offset + KV_BLOCK_KEY_BYTES_OFFSET));
+            r = kv_full_pread(db->kv_fd, current_key, (size_t) current_key_size, (off_t) (current_offset + KV_BLOCK_KEY_BYTES_OFFSET));
             if (r < 0) {
                 if (allocated != NULL) {
                     free(allocated);
@@ -376,12 +377,12 @@ static int find_key(kvdb * db, const char * key, size_t key_size,
             uint8_t log2_size;
             uint64_t current_key_size;
             char * current_key;
-            ssize_t r;
+            int r;
             
             current_offset = next_offset;
             char block_header_data[KV_BLOCK_KEY_BYTES_OFFSET + PRE_READ_KEY_SIZE];
             
-            r = pread(db->kv_fd, block_header_data, sizeof(block_header_data), (off_t) next_offset);
+            r = kv_full_pread(db->kv_fd, block_header_data, sizeof(block_header_data), (off_t) next_offset);
             if (r < 0)
                 return -1;
             char * p = block_header_data;
@@ -415,7 +416,7 @@ static int find_key(kvdb * db, const char * key, size_t key_size,
                     allocated = malloc((size_t) current_key_size);
                     current_key = allocated;
                 }
-                r = pread(db->kv_fd, current_key, (size_t) current_key_size, (off_t) (current_offset + KV_BLOCK_KEY_BYTES_OFFSET));
+                r = kv_full_pread(db->kv_fd, current_key, (size_t) current_key_size, (off_t) (current_offset + KV_BLOCK_KEY_BYTES_OFFSET));
                 if (r < 0) {
                     if (allocated != NULL) {
                         free(allocated);
@@ -462,7 +463,6 @@ struct delete_key_params {
 static void delete_key_callback(kvdb * db, struct find_key_cb_params * params,
                                 void * data) {
     struct delete_key_params * deletekeyparams = data;
-    ssize_t write_count;
     int r;
     
     if (params->previous_offset == 0) {
@@ -470,8 +470,8 @@ static void delete_key_callback(kvdb * db, struct find_key_cb_params * params,
     }
     else {
         uint64_t offset_to_write = hton64(params->next_offset);
-        write_count = pwrite(db->kv_fd, &offset_to_write, sizeof(offset_to_write), params->previous_offset);
-        if (write_count < 0) {
+        r = kv_full_pwrite(db->kv_fd, &offset_to_write, sizeof(offset_to_write), (off_t) params->previous_offset);
+        if (r < 0) {
             deletekeyparams->result = -2;
             return;
         }
@@ -521,12 +521,12 @@ static void read_value_callback(kvdb * db, struct find_key_cb_params * params,
                                 void * data)
 {
     struct read_value_params * readparams = data;
-    ssize_t r;
+    int r;
     
     uint64_t value_size;
-    r = pread(db->kv_fd, &value_size, sizeof(value_size),
-              params->current_offset + 8 + 4 + 1 + 8 + params->key_size);
-    if (r != sizeof(value_size)) {
+    r = kv_full_pread(db->kv_fd, &value_size, sizeof(value_size),
+                      (off_t) (params->current_offset + 8 + 4 + 1 + 8 + params->key_size));
+    if (r < 0) {
         readparams->result = -2;
         return;
     }
@@ -535,21 +535,15 @@ static void read_value_callback(kvdb * db, struct find_key_cb_params * params,
     readparams->value_size = value_size;
     readparams->value = malloc((size_t) value_size);
     
-    uint64_t remaining = value_size;
-    char * value_p = readparams->value;
-    off_t value_offset = (off_t) (params->current_offset + 8 + 4 + 1 + 8 + params->key_size + 8);
-    while (remaining > 0) {
-        ssize_t count = pread(db->kv_fd, value_p, (size_t) remaining,
-                              value_offset);
-        if (count <= 0) {
+    if (value_size > 0) {
+        r = kv_full_pread(db->kv_fd, readparams->value, (size_t) value_size,
+                          (off_t) (params->current_offset + 8 + 4 + 1 + 8 + params->key_size + 8));
+        if (r < 0) {
             readparams->result = -2;
             free(readparams->value);
             readparams->value = NULL;
             return;
         }
-        remaining -= count;
-        value_p += count;
-        value_offset += count;
     }
     
     readparams->result = 0;
@@ -664,61 +658,61 @@ static int internal_kvdb_get2(kvdb * db, const char * key, size_t key_size,
 int kvdb_enumerate_keys(kvdb * db, kvdb_enumerate_callback callback, void * cb_data)
 {
     struct kvdb_table * table = db->kv_first_table;
-	struct kvdb_enumerate_cb_params cb_params;
-	int stop = 0;
-	
+    struct kvdb_enumerate_cb_params cb_params;
+    int stop = 0;
+    
     // Run through all tables.
     while (table != NULL) {
-		struct kvdb_item * item = table->kv_items;
-		// Run through all buckets.
-		uint64_t count = ntoh64(*table->kv_maxcount);
-		while (count) {
-			uint64_t current_offset = ntoh64(item->kv_offset);
-			// Run through all chained blocks in the bucket.
-			while (current_offset != 0) {
-				char block_header_data[KV_BLOCK_KEY_BYTES_OFFSET + PRE_READ_KEY_SIZE];
-				ssize_t r = pread(db->kv_fd, block_header_data, sizeof(block_header_data), (off_t) current_offset);
-				if (r < 0) {
-					return -2;
-				}
-				char * p = block_header_data;
-				uint64_t next_offset = bytes_to_h64(p);
-				p += 8+4+1; // ignore hash_value and log2_size
-				size_t current_key_size = (size_t) bytes_to_h64(p);
-				p += 8;
-				char * current_key = block_header_data + KV_BLOCK_KEY_BYTES_OFFSET;
-				char * allocated = NULL;
-				if (current_key_size > PRE_READ_KEY_SIZE) {
-					if (current_key_size <= MAX_ALLOCA_SIZE) {
-						current_key = alloca(current_key_size);
-					}
-					else {
-						allocated = malloc(current_key_size);
-						current_key = allocated;
-					}
-					r = pread(db->kv_fd, current_key, current_key_size, (off_t) (current_offset + KV_BLOCK_KEY_BYTES_OFFSET));
-					if (r < 0) {
-						if (allocated != NULL) {
-							free(allocated);
-						}
-						return -2;
-					}
-				}
-				cb_params.key = current_key;
-				cb_params.key_size = current_key_size;
-				callback(db, &cb_params, cb_data, &stop);
-				if (allocated != NULL) {
-					free(allocated);
-				}
-				if (stop) {
-					return 0;
-				}
+        struct kvdb_item * item = table->kv_items;
+        // Run through all buckets.
+        uint64_t count = ntoh64(*table->kv_maxcount);
+        while (count) {
+            uint64_t current_offset = ntoh64(item->kv_offset);
+            // Run through all chained blocks in the bucket.
+            while (current_offset != 0) {
+                char block_header_data[KV_BLOCK_KEY_BYTES_OFFSET + PRE_READ_KEY_SIZE];
+                int r = kv_full_pread(db->kv_fd, block_header_data, sizeof(block_header_data), (off_t) current_offset);
+                if (r < 0) {
+                    return -2;
+                }
+                char * p = block_header_data;
+                uint64_t next_offset = bytes_to_h64(p);
+                p += 8 + 4 + 1; // ignore hash_value and log2_size
+                size_t current_key_size = (size_t) bytes_to_h64(p);
+                p += 8;
+                char * current_key = block_header_data + KV_BLOCK_KEY_BYTES_OFFSET;
+                char * allocated = NULL;
+                if (current_key_size > PRE_READ_KEY_SIZE) {
+                    if (current_key_size <= MAX_ALLOCA_SIZE) {
+                        current_key = alloca(current_key_size);
+                    }
+                    else {
+                        allocated = malloc(current_key_size);
+                        current_key = allocated;
+                    }
+                    r = kv_full_pread(db->kv_fd, current_key, current_key_size, (off_t) (current_offset + KV_BLOCK_KEY_BYTES_OFFSET));
+                    if (r < 0) {
+                        if (allocated != NULL) {
+                            free(allocated);
+                        }
+                        return -2;
+                    }
+                }
+                cb_params.key = current_key;
+                cb_params.key_size = current_key_size;
+                callback(db, &cb_params, cb_data, &stop);
+                if (allocated != NULL) {
+                    free(allocated);
+                }
+                if (stop) {
+                    return 0;
+                }
                 current_offset = next_offset;
-			}
-			item ++;
-			count --;
-		}
-		table = table->kv_next_table;
-	}
-	return 0;
+            }
+            item ++;
+            count --;
+        }
+        table = table->kv_next_table;
+    }
+    return 0;
 }

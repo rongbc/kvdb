@@ -16,6 +16,7 @@
 #include "kvtypes.h"
 #include "kvprime.h"
 #include "kvpaddingutils.h"
+#include "kvio.h"
 
 static int map_table(kvdb * db, struct kvdb_table ** result, uint64_t offset, int is_first);
 static int mapping_setup(struct kvdb_mapping * mapping, int fd, off_t offset, size_t size);
@@ -29,8 +30,8 @@ int kv_table_header_write(kvdb * db, uint64_t table_start, uint64_t maxcount)
     bzero(data, KV_TABLE_HEADER_SIZE);
     h64_to_bytes(&data[KV_TABLE_BLOOM_SIZE_OFFSET], bloomsize);
     h64_to_bytes(&data[KV_TABLE_MAX_COUNT_OFFSET], maxcount);
-    ssize_t r;
-    r = pwrite(db->kv_fd, data, KV_TABLE_HEADER_SIZE, table_start);
+    int r;
+    r = kv_full_pwrite(db->kv_fd, data, KV_TABLE_HEADER_SIZE, (off_t) table_start);
     if (r < 0)
         return -1;
     return 0;
@@ -80,7 +81,6 @@ static int map_table(kvdb * db, struct kvdb_table ** result, uint64_t offset, in
 {
     struct kvdb_table * table;
     uint64_t maxcount;
-    ssize_t read_result;
     char data[8];
     int r;
     off_t pre_page_align_size;
@@ -94,8 +94,8 @@ static int map_table(kvdb * db, struct kvdb_table ** result, uint64_t offset, in
         pre_page_align_size = offset - mapping_offset;
     }
     
-    read_result = pread(db->kv_fd, data, 8, offset + KV_TABLE_MAX_COUNT_OFFSET);
-    if (read_result < 0) {
+    r = kv_full_pread(db->kv_fd, data, 8, (off_t) (offset + KV_TABLE_MAX_COUNT_OFFSET));
+    if (r < 0) {
         return -1;
     }
     maxcount = bytes_to_h64(data);

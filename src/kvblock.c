@@ -18,19 +18,18 @@
 #include "kvtypes.h"
 #include "kvendian.h"
 #include "kvpaddingutils.h"
+#include "kvio.h"
 
 int kv_block_recycle(kvdb * db, uint64_t offset)
 {
     uint8_t log2_size;
-    ssize_t count;
-    
-    count = pread(db->kv_fd, &log2_size, 1, offset + 8 + 4);
-    if (count < 0)
+    int r = kv_full_pread(db->kv_fd, &log2_size, 1, (off_t) (offset + 8 + 4));
+    if (r < 0)
         return -1;
     uint64_t next_free_offset = db->kv_free_blocks[log2_size];
     // keep it in network order.
-    count = pwrite(db->kv_fd, &next_free_offset, sizeof(next_free_offset), offset);
-    if (count < 0)
+    r = kv_full_pwrite(db->kv_fd, &next_free_offset, sizeof(next_free_offset), (off_t) offset);
+    if (r < 0)
         return -1;
     db->kv_free_blocks[log2_size] = hton64(offset);
     
@@ -51,7 +50,9 @@ uint64_t kv_block_create(kvdb * db, uint64_t next_block_offset, uint32_t hash_va
         uint64_t next_free_offset;
         //fprintf(stderr, "Use free block %i %i %i\n", (int) offset, (int) log2_size, (int)block_size);
         // keep it in network order.
-        pread(db->kv_fd, &next_free_offset, sizeof(next_free_offset), offset);
+        if (kv_full_pread(db->kv_fd, &next_free_offset, sizeof(next_free_offset), (off_t) offset) < 0) {
+            return 0;
+        }
         db->kv_free_blocks[log2_size] = next_free_offset;
     }
     else {
@@ -91,20 +92,12 @@ uint64_t kv_block_create(kvdb * db, uint64_t next_block_offset, uint32_t hash_va
     p += sizeof(current_value_size);
     memcpy(p, value, value_size);
     p += value_size;
-    size_t remaining = (8 + 4 + 1 + 8 + 8 + block_size);
-    size_t write_offset = offset;
-    char * remaining_data = data;
-    while (remaining > 0) {
-        ssize_t count = pwrite(db->kv_fd, remaining_data, remaining, write_offset);
-        if (count < 0) {
-            if (allocated != NULL) {
-                free(allocated);
-            }
-            return 0;
+    size_t data_size = (8 + 4 + 1 + 8 + 8 + block_size);
+    if (kv_full_pwrite(db->kv_fd, data, data_size, (off_t) offset) < 0) {
+        if (allocated != NULL) {
+            free(allocated);
         }
-        write_offset += count;
-        remaining_data += count;
-        remaining -= count;
+        return 0;
     }
     if (allocated != NULL) {
         free(allocated);
