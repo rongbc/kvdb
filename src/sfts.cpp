@@ -579,13 +579,22 @@ static int db_flush(sfts * index)
     for(std::unordered_set<std::string>::iterator set_iterator = index->sfts_buffer_dirty.begin() ; set_iterator != index->sfts_buffer_dirty.end() ; ++ set_iterator) {
         std::string key = * set_iterator;
         std::string value = index->sfts_buffer[key];
-        kvdbo_set(index->sfts_db, key.c_str(), key.length(), value.c_str(), value.length());
+        int r = kvdbo_set(index->sfts_db, key.c_str(), key.length(), value.c_str(), value.length());
+        if (r < 0) {
+            return r;
+        }
     }
     for(std::unordered_set<std::string>::iterator set_iterator = index->sfts_deleted.begin() ; set_iterator != index->sfts_deleted.end() ; ++ set_iterator) {
         std::string key = * set_iterator;
-        kvdbo_delete(index->sfts_db, key.c_str(), key.length());
+        int r = kvdbo_delete(index->sfts_db, key.c_str(), key.length());
+        if (r < 0) {
+            return r;
+        }
     }
-    kvdbo_flush(index->sfts_db);
+    int r = kvdbo_flush(index->sfts_db);
+    if (r < 0) {
+        return r;
+    }
     index->sfts_buffer.clear();
     index->sfts_buffer_dirty.clear();
     index->sfts_deleted.clear();
