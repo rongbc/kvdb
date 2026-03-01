@@ -20,6 +20,7 @@
 #define KV_HEADER_FIRSTMAXCOUNT_OFFSET (4 + 4)
 #define KV_HEADER_FILESIZE_OFFSET (4 + 4 + 8 + 1)
 #define KV_HEADER_FREELIST_OFFSET (4 + 4 + 8 + 1 + 8)
+#define KV_HEADER_FREELIST_COUNT 64
 
 // 1. marker                                  4 bytes
 // 2. version                                 4 bytes

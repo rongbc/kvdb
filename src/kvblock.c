@@ -26,6 +26,9 @@ int kv_block_recycle(kvdb * db, uint64_t offset)
     int r = kv_full_pread(db->kv_fd, &log2_size, 1, (off_t) (offset + 8 + 4));
     if (r < 0)
         return -1;
+    if (log2_size >= KV_HEADER_FREELIST_COUNT) {
+        return -1;
+    }
     uint64_t next_free_offset = db->kv_free_blocks[log2_size];
     // keep it in network order.
     r = kv_full_pwrite(db->kv_fd, &next_free_offset, sizeof(next_free_offset), (off_t) offset);
@@ -42,6 +45,9 @@ uint64_t kv_block_create(kvdb * db, uint64_t next_block_offset, uint32_t hash_va
 {
     uint64_t block_size = block_size_round_up(key_size + value_size);
     uint8_t log2_size = log2_round_up(block_size);
+    if (log2_size >= KV_HEADER_FREELIST_COUNT) {
+        return 0;
+    }
     uint64_t offset = ntoh64(db->kv_free_blocks[log2_size]);
     int use_new_block = 0;
     //fprintf(stderr, "key, value: %i %i\n", (int) key_size, (int) value_size);
