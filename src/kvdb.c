@@ -12,6 +12,7 @@
 #include <sys/types.h>
 #include <sys/uio.h>
 #include <unistd.h>
+#include <limits.h>
 
 #include <lz4.h>
 
@@ -578,11 +579,40 @@ static int kvdb_get2(kvdb * db, const char * key, size_t key_size,
             * p_value_size = 0;
             return 0;
         }
-    
-        size_t value_size = ntohl(* (uint32_t *) compressed_value);
-        char * value = malloc(value_size);
-        LZ4_decompress_fast(compressed_value + sizeof(uint32_t), value, (int) value_size);
+
+        if (compressed_value_size < sizeof(uint32_t)) {
+            free(compressed_value);
+            return -2;
+        }
+
+        uint32_t value_size_be = 0;
+        memcpy(&value_size_be, compressed_value, sizeof(value_size_be));
+        size_t value_size = ntohl(value_size_be);
+        size_t compressed_payload_size = compressed_value_size - sizeof(uint32_t);
+
+        if ((value_size > INT_MAX) || (compressed_payload_size > INT_MAX)) {
+            free(compressed_value);
+            return -2;
+        }
+
+        char * value = NULL;
+        if (value_size > 0) {
+            value = malloc(value_size);
+            if (value == NULL) {
+                free(compressed_value);
+                return -2;
+            }
+        }
+
+        int decompressed_size = LZ4_decompress_safe(compressed_value + sizeof(uint32_t),
+                                                    value,
+                                                    (int) compressed_payload_size,
+                                                    (int) value_size);
         free(compressed_value);
+        if ((decompressed_size < 0) || ((size_t) decompressed_size != value_size)) {
+            free(value);
+            return -2;
+        }
         if (p_free_size != NULL) {
             * p_free_size = 0;
         }
