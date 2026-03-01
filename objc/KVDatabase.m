@@ -39,6 +39,12 @@ enum {
     kvdb_close(_db);
 }
 
+- (void) dealloc
+{
+    kvdb_close(_db);
+    kvdb_free(_db);
+}
+
 - (NSData *) dataForKey:(NSString *)key
 {
     const char * cKey = [key UTF8String];

@@ -33,6 +33,12 @@ enum {
     sfts_close(_db);
 }
 
+- (void) dealloc
+{
+    sfts_close(_db);
+    sfts_free(_db);
+}
+
 - (BOOL) flush
 {
     int r = sfts_flush(_db);
