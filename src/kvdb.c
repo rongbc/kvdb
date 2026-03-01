@@ -96,7 +96,7 @@ int kvdb_open(kvdb * db)
     r = fstat(db->kv_fd, &stat_buf);
     if (r < 0) {
         close(db->kv_fd);
-        // close file.
+        db->kv_fd = -1;
         fprintf(stderr, "fstat failed\n");
         return -1;
     }
@@ -111,7 +111,7 @@ int kvdb_open(kvdb * db)
         r = ftruncate(db->kv_fd, KV_PAGE_ROUND_UP(db, first_mapping_size));
         if (r < 0) {
             close(db->kv_fd);
-            // close file.
+            db->kv_fd = -1;
             fprintf(stderr, "truncate failed\n");
             return -1;
         }
@@ -119,15 +119,33 @@ int kvdb_open(kvdb * db)
         h32_to_bytes(&data[4], VERSION);
         h64_to_bytes(&data[4 + 4], firstmaxcount);
         data[4 + 4 + 8] = db->kv_compression_type;
-        write(db->kv_fd, data, sizeof(data));
+        ssize_t write_count = write(db->kv_fd, data, sizeof(data));
+        if (write_count != sizeof(data)) {
+            close(db->kv_fd);
+            db->kv_fd = -1;
+            fprintf(stderr, "write failed\n");
+            return -1;
+        }
         
-        kv_table_header_write(db, KV_HEADER_SIZE, firstmaxcount);
+        r = kv_table_header_write(db, KV_HEADER_SIZE, firstmaxcount);
+        if (r < 0) {
+            close(db->kv_fd);
+            db->kv_fd = -1;
+            fprintf(stderr, "write table header failed\n");
+            return -1;
+        }
     }
     
     char marker[4];
     uint32_t version;
     int compression_type;
-    pread(db->kv_fd, data, sizeof(data), 0);
+    ssize_t read_count = pread(db->kv_fd, data, sizeof(data), 0);
+    if (read_count != sizeof(data)) {
+        close(db->kv_fd);
+        db->kv_fd = -1;
+        fprintf(stderr, "read header failed\n");
+        return -1;
+    }
     memcpy(marker, data, 4);
     version = bytes_to_h32(&data[4]);
     firstmaxcount = bytes_to_h64(&data[4 + 4]);
@@ -136,20 +154,25 @@ int kvdb_open(kvdb * db)
     r = memcmp(marker, MARKER, 4);
     if (r != 0) {
         fprintf(stderr, "file corrupted\n");
+        close(db->kv_fd);
+        db->kv_fd = -1;
         return -1;
     }
     if (version != VERSION) {
         fprintf(stderr, "bad file version\n");
+        close(db->kv_fd);
+        db->kv_fd = -1;
         return -1;
     }
     
     db->kv_firstmaxcount = firstmaxcount;
     db->kv_compression_type = compression_type;
-    db->kv_opened = 1;
     
     r = kv_tables_setup(db);
     if (r < 0) {
         fprintf(stderr, "can't map files\n");
+        close(db->kv_fd);
+        db->kv_fd = -1;
         return -1;
     }
     
@@ -159,6 +182,7 @@ int kvdb_open(kvdb * db)
     if (create_file) {
         * db->kv_filesize = hton64(first_mapping_size);
     }
+    db->kv_opened = 1;
     
     return 0;
 }
