@@ -436,8 +436,12 @@ int sfts_u_search(sfts * index, const UChar * utoken, sfts_search_kind kind,
     db_flush(index);
     
     char * transliterated = kv_transliterate(utoken, -1);
+    if (transliterated == NULL) {
+        return -2;
+    }
     unsigned int transliterated_length = (unsigned int) strlen(transliterated);
     std::set<uint64_t> result_set;
+    int result = 0;
     
     kvdbo_iterator * iterator = kvdbo_iterator_new(index->sfts_db);
     if (kind == sfts_search_kind_prefix) {
@@ -478,11 +482,16 @@ int sfts_u_search(sfts * index, const UChar * utoken, sfts_search_kind kind,
         if (add_to_result) {
             size_t position = 0;
             uint64_t wordid;
-            char * value;
-            size_t value_size;
+            char * value = NULL;
+            size_t value_size = 0;
             int r = kvdbo_get(index->sfts_db, key_str.c_str(), key_str.length(), &value, &value_size);
-            if (r != 0) {
-                fprintf(stderr, "VALUE NOT FOUND for key %s\n", key_str.c_str());
+            if (r == -1) {
+                kvdbo_iterator_next(iterator);
+                continue;
+            }
+            if (r < 0) {
+                result = r;
+                break;
             }
             std::string value_str(value, value_size);
             free(value);
@@ -499,15 +508,18 @@ int sfts_u_search(sfts * index, const UChar * utoken, sfts_search_kind kind,
     kvdbo_iterator_free(iterator);
     
     free(transliterated);
+    if (result < 0) {
+        return result;
+    }
     
-    uint64_t * result = (uint64_t *) calloc(result_set.size(), sizeof(* result));
+    uint64_t * docsids = (uint64_t *) calloc(result_set.size(), sizeof(* docsids));
     unsigned int count = 0;
     for(std::set<uint64_t>::iterator set_iterator = result_set.begin() ; set_iterator != result_set.end() ; ++ set_iterator) {
-        result[count] = * set_iterator;
+        docsids[count] = * set_iterator;
         count ++;
     }
     
-    * p_docsids = result;
+    * p_docsids = docsids;
     * p_count = count;
     
     return 0;
