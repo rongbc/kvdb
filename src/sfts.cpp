@@ -46,7 +46,7 @@ sfts * sfts_new(const char * filename)
 void sfts_free(sfts * index)
 {
     kvdbo_free(index->sfts_db);
-    free(index);
+    delete index;
 }
 
 int sfts_open(sfts * index)
