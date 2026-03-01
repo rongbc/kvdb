@@ -41,13 +41,13 @@ static inline uint32_t kv_murmur_hash(const char * data, size_t length, uint32_t
     
     if (left != 0) {
         if (left >= 3) {
-            h ^= (uint32_t) data[length - 3] << 16;
+            h ^= (uint32_t) bytes[length - 3] << 16;
         }
         if (left >= 2) {
-            h ^= (uint32_t) data[length - 2] << 8;
+            h ^= (uint32_t) bytes[length - 2] << 8;
         }
         if (left >= 1) {
-            h ^= (uint32_t) data[length - 1];
+            h ^= (uint32_t) bytes[length - 1];
         }
         
         h *= m;
