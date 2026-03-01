@@ -27,6 +27,7 @@ enum {
 
 - (void) dealloc
 {
+    kvdbo_close(_db);
     kvdbo_free(_db);
 }
 
@@ -165,4 +166,3 @@ enum {
 }
 
 @end
-
