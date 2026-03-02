@@ -88,7 +88,7 @@ static void Xextract(UReplaceable* rep, int32_t start, int32_t limit, UChar* dst
 {
     XReplaceable* x = (XReplaceable*)rep;
     int32_t len = limit - start;
-    u_strncpy(dst, x->text, len);
+    u_strncpy(dst, x->text + start, len);
 }
 
 static void InitXReplaceableCallbacks(UReplaceableCallbacks* callbacks)
