@@ -354,6 +354,8 @@ static int read_master_node(kvdbo * db)
         return -2;
     }
     std::string buffer(value, size);
+    free(value);
+    value = NULL;
     db->nodes_ids.clear();
     uint64_t count = 0;
     size_t position = 0;
@@ -373,7 +375,7 @@ static int read_master_node(kvdbo * db)
     }
     //size_t remaining = size - (p - value);
     size_t remaining = size - position;
-    unserialize_words_list(db->nodes_first_keys, value + position, remaining);
+    unserialize_words_list(db->nodes_first_keys, (char *) buffer.data() + position, remaining);
     if (max_node_id == (uint64_t) -1) {
         return -2;
     }
