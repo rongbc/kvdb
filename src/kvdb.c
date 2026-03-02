@@ -196,7 +196,10 @@ void kvdb_close(kvdb * db)
     }
     
     kv_tables_unsetup(db);
+    db->kv_first_table = NULL;
+    db->kv_current_table = NULL;
     close(db->kv_fd);
+    db->kv_fd = -1;
     db->kv_opened = 0;
 }
 
