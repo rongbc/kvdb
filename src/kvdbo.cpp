@@ -373,9 +373,15 @@ static int read_master_node(kvdbo * db)
     uint64_t count = 0;
     size_t position = 0;
     position = kv_decode_uint64(buffer, position, &count);
+    if (position == (size_t) -1) {
+        return -2;
+    }
     for(uint64_t i = 0 ; i < count ; i ++) {
         uint64_t node_id = 0;
         position = kv_decode_uint64(buffer, position, &node_id);
+        if (position == (size_t) -1) {
+            return -2;
+        }
         db->nodes_ids.push_back(node_id);
         if (node_id > max_node_id) {
             max_node_id = node_id;
@@ -384,6 +390,9 @@ static int read_master_node(kvdbo * db)
     for(uint64_t i = 0 ; i < count ; i ++) {
         uint64_t keys_count = 0;
         position = kv_decode_uint64(buffer, position, &keys_count);
+        if (position == (size_t) -1) {
+            return -2;
+        }
         db->nodes_keys_count.push_back((uint32_t) keys_count);
     }
     //size_t remaining = size - (p - value);

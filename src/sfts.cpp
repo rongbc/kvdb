@@ -253,7 +253,10 @@ static int add_to_indexer(sfts * index, uint64_t doc, const char * word,
     }
     if (r == 0) {
         // Adding doc id to existing entry.
-        kv_decode_uint64(value, 0, &wordid);
+        size_t position = kv_decode_uint64(value, 0, &wordid);
+        if (position == (size_t) -1) {
+            return -1;
+        }
         kv_encode_uint64(value, doc);
         int r = db_put(index, word_str, value);
         if (r < 0) {
@@ -277,7 +280,10 @@ static int add_to_indexer(sfts * index, uint64_t doc, const char * word,
             return -1;
         }
         else {
-            kv_decode_uint64(str, 0, &wordid);
+            size_t position = kv_decode_uint64(str, 0, &wordid);
+            if (position == (size_t) -1) {
+                return -1;
+            }
         }
         
         // write next word id
@@ -337,6 +343,9 @@ int sfts_remove(sfts * index, uint64_t doc)
     while (position < str.size()) {
         uint64_t wordid;
         position = kv_decode_uint64(str, position, &wordid);
+        if (position == (size_t) -1) {
+            return -1;
+        }
         std::string word = get_word_for_wordid(index, wordid);
         if (word.size() == 0) {
             continue;
@@ -378,10 +387,16 @@ static int remove_docid_in_word(sfts * index, std::string word, uint64_t doc)
     int has_remaining_doc = 0;
     size_t position = 0;
     position = kv_decode_uint64(str, position, &wordid);
+    if (position == (size_t) -1) {
+        return -1;
+    }
     kv_encode_uint64(buffer, wordid);
     while (position < str.size()) {
         uint64_t current_docid;
         position = kv_decode_uint64(str, position, &current_docid);
+        if (position == (size_t) -1) {
+            return -1;
+        }
         if (current_docid != doc) {
             kv_encode_uint64(buffer, current_docid);
             has_remaining_doc = 1;
@@ -500,10 +515,21 @@ int sfts_u_search(sfts * index, const UChar * utoken, sfts_search_kind kind,
             std::string value_str(value, value_size);
             free(value);
             position = kv_decode_uint64(value_str, position, &wordid);
+            if (position == (size_t) -1) {
+                result = -2;
+                break;
+            }
             while (position < value_str.size()) {
                 uint64_t docid;
                 position = kv_decode_uint64(value_str, position, &docid);
+                if (position == (size_t) -1) {
+                    result = -2;
+                    break;
+                }
                 result_set.insert(docid);
+            }
+            if (result < 0) {
+                break;
             }
         }
         
