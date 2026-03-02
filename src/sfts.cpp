@@ -80,7 +80,16 @@ int sfts_set(sfts * index, uint64_t doc, const char * text)
 
 int sfts_set2(sfts * index, uint64_t doc, const char ** text, int count)
 {
+    if (count < 0) {
+        return -1;
+    }
+    if ((count > 0) && (text == NULL)) {
+        return -1;
+    }
     UChar ** utext = (UChar **) malloc(count * sizeof(* utext));
+    if ((count > 0) && (utext == NULL)) {
+        return -1;
+    }
     for(int i = 0 ; i < count ; i ++) {
         utext[i] = kv_from_utf8(text[i]);
     }
@@ -107,13 +116,19 @@ int sfts_u_set(sfts * index, uint64_t doc, const UChar * utext)
 
 int sfts_u_set2(sfts * index, uint64_t doc, const UChar ** utext, int count)
 {
+    if (count < 0) {
+        return -1;
+    }
+    if ((count > 0) && (utext == NULL)) {
+        return -1;
+    }
     int r = sfts_remove(index, doc);
     if (r < 0) {
         return r;
     }
     int result = 0;
     std::set<uint64_t> wordsids_set;
-    for(unsigned int i = 0 ; i < count ; i ++) {
+    for(int i = 0 ; i < count ; i ++) {
         if (utext[i] == NULL) {
             continue;
         }
