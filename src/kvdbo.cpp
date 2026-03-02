@@ -179,6 +179,10 @@ void kvdbo_iterator_free(kvdbo_iterator * iterator)
 void kvdbo_iterator_seek_first(kvdbo_iterator * iterator)
 {
     if (iterator->db->nodes_ids.size() == 0) {
+        iterator->keys.clear();
+        iterator->node_id = 0;
+        iterator->node_index = 0;
+        iterator->key_index = -1;
         return;
     }
     uint64_t node_id = iterator->db->nodes_ids[0];
@@ -191,6 +195,10 @@ void kvdbo_iterator_seek_first(kvdbo_iterator * iterator)
 void kvdbo_iterator_seek_last(kvdbo_iterator * iterator)
 {
     if (iterator->db->nodes_ids.size() == 0) {
+        iterator->keys.clear();
+        iterator->node_id = 0;
+        iterator->node_index = 0;
+        iterator->key_index = -1;
         return;
     }
     uint64_t node_id = iterator->db->nodes_ids[iterator->db->nodes_ids.size() - 1];
@@ -205,6 +213,10 @@ void kvdbo_iterator_seek_after(kvdbo_iterator * iterator,
                                size_t key_size)
 {
     if (iterator->db->nodes_ids.size() == 0) {
+        iterator->keys.clear();
+        iterator->node_id = 0;
+        iterator->node_index = 0;
+        iterator->key_index = -1;
         return;
     }
     std::string key_string(key, key_size);
@@ -297,6 +309,7 @@ static int iterator_load_node(kvdbo_iterator * iterator, uint64_t node_id)
     size_t size = 0;
     int r = kvdb_get(iterator->db->db, node_key.c_str(), node_key.length(), &value, &size);
     if (r == -1) {
+        iterator->keys.clear();
         return 0;
     }
     if (r == -2) {
