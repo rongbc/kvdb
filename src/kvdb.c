@@ -589,6 +589,7 @@ static int kvdb_get2(kvdb * db, const char * key, size_t key_size,
             return r;
         }
         if (compressed_value_size == 0) {
+            free(compressed_value);
             * p_value = NULL;
             * p_value_size = 0;
             return 0;
