@@ -86,6 +86,9 @@ static int map_table(kvdb * db, struct kvdb_table ** result, uint64_t offset, in
     off_t pre_page_align_size;
     
     table = calloc(1, sizeof(* table));
+    if (table == NULL) {
+        return -1;
+    }
     if (is_first) {
         pre_page_align_size = KV_HEADER_SIZE;
     }
@@ -96,13 +99,13 @@ static int map_table(kvdb * db, struct kvdb_table ** result, uint64_t offset, in
     
     r = kv_full_pread(db->kv_fd, data, 8, (off_t) (offset + KV_TABLE_MAX_COUNT_OFFSET));
     if (r < 0) {
-        return -1;
+        goto err;
     }
     maxcount = bytes_to_h64(data);
     uint64_t mapping_size = pre_page_align_size + KV_TABLE_SIZE(maxcount);
     r = mapping_setup(&table->kv_mapping, db->kv_fd, offset - pre_page_align_size, (size_t) mapping_size);
     if (r < 0) {
-        return -1;
+        goto err;
     }
     table->kv_table_start = table->kv_mapping.kv_bytes + pre_page_align_size;
     
@@ -113,19 +116,23 @@ static int map_table(kvdb * db, struct kvdb_table ** result, uint64_t offset, in
     table->kv_maxcount = (uint64_t *) (table->kv_table_start + KV_TABLE_MAX_COUNT_OFFSET);
     table->kv_bloom_filter = (uint8_t *) (table->kv_table_start + KV_TABLE_BLOOM_FILTER_OFFSET);
     
-    * result = table;
-    
     if (* table->kv_next_table_offset != 0) {
         r = map_table(db, &table->kv_next_table, ntoh64(* table->kv_next_table_offset), 0);
         if (r < 0) {
-            return -1;
+            goto err;
         }
     }
     else {
         table->kv_next_table = NULL;
     }
+
+    * result = table;
     
     return 0;
+
+err:
+    unmap_table(table);
+    return -1;
 }
 
 static void unmap_table(struct kvdb_table * table)
