@@ -210,19 +210,37 @@ int kvdb_set(kvdb * db, const char * key, size_t key_size, const char * value, s
             return internal_kvdb_set(db, key, key_size, value, value_size);
         }
         else {
-            int max_compressed_size = LZ4_compressBound((int) value_size);
+            if ((value_size > (size_t) INT_MAX) || (value_size > (size_t) UINT32_MAX)) {
+                return -2;
+            }
+            int input_size = (int) value_size;
+            int max_compressed_size = LZ4_compressBound(input_size);
+            if (max_compressed_size <= 0) {
+                return -2;
+            }
             char * compressed_value = NULL;
             int allocated = 0;
+            size_t total_size = sizeof(uint32_t) + (size_t) max_compressed_size;
             if (max_compressed_size < 4096) {
-                compressed_value = alloca(sizeof(uint32_t) + max_compressed_size);
+                compressed_value = alloca(total_size);
             }
             else {
                 allocated = 1;
-                compressed_value = malloc(sizeof(uint32_t) + max_compressed_size);
+                compressed_value = malloc(total_size);
+                if (compressed_value == NULL) {
+                    return -2;
+                }
             }
-            * (uint32_t *) compressed_value = htonl(value_size);
-            int compressed_value_size = LZ4_compress(value, compressed_value + sizeof(uint32_t), (int) value_size);
-            int r = internal_kvdb_set(db, key, key_size, compressed_value, sizeof(uint32_t) + compressed_value_size);
+            uint32_t value_size_be = htonl((uint32_t) value_size);
+            memcpy(compressed_value, &value_size_be, sizeof(value_size_be));
+            int compressed_value_size = LZ4_compress(value, compressed_value + sizeof(uint32_t), input_size);
+            if (compressed_value_size <= 0) {
+                if (allocated) {
+                    free(compressed_value);
+                }
+                return -2;
+            }
+            int r = internal_kvdb_set(db, key, key_size, compressed_value, sizeof(uint32_t) + (size_t) compressed_value_size);
             if (allocated) {
                 free(compressed_value);
             }
