@@ -46,3 +46,9 @@ add_library (kvdb
     ${LZ4_DIR}/lz4frame.c
     ${LZ4_DIR}/xxhash.c
 )
+
+add_executable(kvdb_tests
+    kvdb_tests.cpp
+)
+target_link_libraries(kvdb_tests kvdb)
+add_test(NAME kvdb_tests COMMAND kvdb_tests)
