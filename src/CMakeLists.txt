@@ -61,3 +61,9 @@ add_executable(sfts_tests
 )
 target_link_libraries(sfts_tests kvdb)
 add_test(NAME sfts_tests COMMAND sfts_tests)
+
+add_executable(kvdbo_tests
+    kvdbo_tests.cpp
+)
+target_link_libraries(kvdbo_tests kvdb)
+add_test(NAME kvdbo_tests COMMAND kvdbo_tests)
