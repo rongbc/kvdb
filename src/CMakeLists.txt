@@ -46,9 +46,18 @@ add_library (kvdb
     ${LZ4_DIR}/lz4frame.c
     ${LZ4_DIR}/xxhash.c
 )
+if(APPLE)
+  target_link_libraries(kvdb "-framework CoreFoundation")
+endif()
 
 add_executable(kvdb_tests
     kvdb_tests.cpp
 )
 target_link_libraries(kvdb_tests kvdb)
 add_test(NAME kvdb_tests COMMAND kvdb_tests)
+
+add_executable(sfts_tests
+    sfts_tests.cpp
+)
+target_link_libraries(sfts_tests kvdb)
+add_test(NAME sfts_tests COMMAND sfts_tests)
