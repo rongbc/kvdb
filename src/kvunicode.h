@@ -18,7 +18,9 @@
 #include "unicode/uiter.h"
 #include "unicode/ustring.h"
 #else
-#if defined(__CHAR16_TYPE__)
+#if defined(__cplusplus)
+typedef char16_t UChar;
+#elif defined(__CHAR16_TYPE__)
 typedef __CHAR16_TYPE__ UChar;
 #else
 typedef uint16_t UChar;

@@ -1,11 +1,13 @@
 #include "sfts.h"
 
 #include <stdlib.h>
+#include <cstring>
 
 #include "kvdbo.h"
 
 #include "kvunicode.h"
 #include "kvserialization.h"
+#include "kvassert.h"
 
 #include <set>
 #include <map>
@@ -199,7 +201,7 @@ static int tokenize(sfts * index, uint64_t doc, const UChar * text)
     UErrorCode status;
     status = U_ZERO_ERROR;
     UBreakIterator * iterator = ubrk_open(UBRK_WORD, NULL, text, u_strlen(text), &status);
-    LIDX_ASSERT(status <= U_ZERO_ERROR);
+    KVDBAssert(status <= U_ZERO_ERROR);
     
     int32_t left = 0;
     int32_t right = 0;
@@ -219,7 +221,7 @@ static int tokenize(sfts * index, uint64_t doc, const UChar * text)
             continue;
         }
         
-        char * transliterated = lidx_transliterate(&text[left], right - left);
+        char * transliterated = kv_transliterate(&text[left], right - left);
         if (transliterated == NULL) {
             continue;
         }

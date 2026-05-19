@@ -1,7 +1,7 @@
-kvdb
-====
+# kvdb
 
 This library implements:
+
 - a Key Value Store,
 - an ordered Key Value Store,
 - a Full Text Search Index.
@@ -9,8 +9,7 @@ This library implements:
 It targets embedded platforms where there are memory, disk and file descriptors constraints.
 The API are available in C and Objective-C.
 
-kvdb
-====
+# kvdb
 
 A Key-Value Database.
 
@@ -18,8 +17,7 @@ A Key-Value Database.
 - Low memory usage
 - Good performance
 
-kvdbo
-=====
+# kvdbo
 
 An ordered Key-Value Database.
 
@@ -28,8 +26,7 @@ An ordered Key-Value Database.
 - Good performance
 - Keys can be iterated in lexicographical order
 
-sfts
-====
+# sfts
 
 A Simple Full Text Search.
 
@@ -38,8 +35,19 @@ A Simple Full Text Search.
 - Good performance
 - Unicode support
 
-Examples
-========
+# Examples
 
 - [Examples for C](EXAMPLES.md)
 - [Examples for Objective-C](EXAMPLES.objc.md)
+
+# Build
+
+```bash
+git submodule sync --recursive
+git submodule update --init --recursive
+
+mkdir build
+cd build
+cmake ..
+make
+```

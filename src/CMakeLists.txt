@@ -48,6 +48,10 @@ add_library (kvdb
 )
 if(APPLE)
   target_link_libraries(kvdb "-framework CoreFoundation")
+else()
+  find_package(ICU REQUIRED COMPONENTS uc i18n)
+  target_include_directories(kvdb PUBLIC ${ICU_INCLUDE_DIRS})
+  target_link_libraries(kvdb ${ICU_LIBRARIES} pthread)
 endif()
 
 add_executable(kvdb_tests

@@ -1,4 +1,5 @@
 #include "kvunicode.h"
+#include "kvassert.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -117,12 +118,12 @@ static void kv_unicode_init(void)
         UChar urules[1024];
         UErrorCode status = U_ZERO_ERROR;
         u_strFromUTF8(urules, (int32_t) (sizeof(urules) / sizeof(urules[0])), NULL, "Any-Latin; NFD; Lower; [:nonspacing mark:] remove; nfc", -1, &status);
-        LIDX_ASSERT(status == U_ZERO_ERROR);
+        KVDBAssert(status == U_ZERO_ERROR);
         
         UParseError parseError;
         s_trans = utrans_openU(urules, -1, UTRANS_FORWARD,
                                NULL, -1, &parseError, &status);
-        LIDX_ASSERT(status == U_ZERO_ERROR);
+        KVDBAssert(status == U_ZERO_ERROR);
         
         InitXReplaceableCallbacks(&s_xrepVtable);
         s_initialized = 1;
@@ -231,14 +232,13 @@ char * kv_transliterate(const UChar * text, int length)
         goto free_xrep;
     }
     
-    char * result = lidx_to_utf8(xrep.text);
+    char * result = kv_to_utf8(xrep.text);
     FreeXReplaceable(&xrep);
     
     return result;
     
 free_xrep:
     FreeXReplaceable(&xrep);
-err:
     return NULL;
 #endif
 }

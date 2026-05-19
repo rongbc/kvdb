@@ -3,6 +3,7 @@
 #define KVSERIALIZATION_H
 
 #include <string>
+#include <cstdint>
 
 void kv_encode_uint64(std::string & buffer, uint64_t value);
 // Returns SIZE_MAX on malformed or truncated input.

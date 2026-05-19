@@ -10,7 +10,9 @@ extern "C" {
 #include <stdlib.h>
 
 // We're using the same UChar as the ICU library.
-#if defined(__CHAR16_TYPE__)
+#if defined(__cplusplus)
+typedef char16_t UChar;
+#elif defined(__CHAR16_TYPE__)
 typedef __CHAR16_TYPE__ UChar;
 #else
 typedef uint16_t UChar;
